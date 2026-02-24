@@ -328,6 +328,44 @@
     });
   }
 
+  /* ── HERO SCROLL ZOOM ──
+   * Pins the hero via CSS sticky (height:220vh wrapper).
+   * Maps scroll progress (0→1) inside the zone to:
+   *   scale  1.0 → 1.8  (zoom in)
+   *   opacity 1.0 → 0.0  (fade out in last 30%)
+   * Fully reversible — scroll back up → zoom reverses.
+   */
+  function setupHeroZoom () {
+    const zone  = document.getElementById('hero-scroll-zone');
+    const inner = document.querySelector('.hero-zoom-inner');
+    if (!zone || !inner) return;
+
+    function updateZoom () {
+      const zoneTop    = zone.offsetTop;
+      const zoneHeight = zone.offsetHeight;          // 220vh
+      const viewH      = window.innerHeight;
+      const scrollable = zoneHeight - viewH;         // 120vh of zoom travel
+      if (scrollable <= 0) return;
+
+      const scrolled  = Math.max(0, Math.min(scrollable, window.scrollY - zoneTop));
+      const progress  = scrolled / scrollable;       // 0 → 1
+
+      /* Scale: 1.0 at start, 1.8 at full scroll */
+      const scale   = 1 + progress * 0.8;
+
+      /* Fade out in the last 30% of the scroll zone */
+      const opacity = progress > 0.70
+        ? Math.max(0, 1 - (progress - 0.70) / 0.30)
+        : 1;
+
+      inner.style.transform = `scale(${scale.toFixed(4)})`;
+      inner.style.opacity   = opacity.toFixed(4);
+    }
+
+    window.addEventListener('scroll', updateZoom, { passive: true });
+    updateZoom(); /* run once on load */
+  }
+
   /* ── RENDER LOOP ── */
   let lastT = performance.now();
   function loop (now) {
@@ -348,6 +386,7 @@
     createWarpCanvas();
     window.addEventListener('resize', resize,   { passive: true });
     window.addEventListener('scroll', onScroll, { passive: true });
+    setupHeroZoom();
     setupSectionReveal();
     setupTileReflection();
     loop(performance.now());

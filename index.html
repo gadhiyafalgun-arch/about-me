@@ -42,7 +42,9 @@
     .nav-links a.active{color:var(--accent)}
 
     /* ── HERO ── */
-    .hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:8rem 4rem 4rem;position:relative;z-index:1;overflow:hidden}
+    #hero-scroll-zone{position:relative;height:220vh;overflow:hidden}
+    .hero{min-height:unset!important;height:100vh!important;display:flex;flex-direction:column;justify-content:center;padding:0!important;position:sticky!important;top:0!important;z-index:1;overflow:hidden}
+    .hero-zoom-inner{position:relative;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;padding:8rem 4rem 4rem;transform-origin:center center;will-change:transform,opacity}
     .parallax-bg{position:absolute;inset:0;pointer-events:none}
     .p-circle{position:absolute;border-radius:50%;border:1px solid rgba(0,255,224,0.06);animation:expandCircle linear infinite}
     @keyframes expandCircle{0%{transform:translate(-50%,-50%) scale(0);opacity:.6}100%{transform:translate(-50%,-50%) scale(1);opacity:0}}
@@ -235,7 +237,7 @@
     @media(max-width:768px){
       nav{padding:1rem 1.5rem}.nav-links{gap:1rem}
       section,.cat-section{padding:5rem 1.5rem}
-      .hero{padding:7rem 1.5rem 3rem}
+      .hero-zoom-inner{padding:7rem 1.5rem 3rem}
       .hero-stats{position:static;flex-direction:row;margin-top:3rem;text-align:left}
       .cat-layout{grid-template-columns:1fr;gap:3rem}
       .skills-layout,.about-layout,.contact-layout{grid-template-columns:1fr;gap:2rem}
@@ -265,29 +267,33 @@
 </nav>
 
 <!-- ══════════════════ HERO ══════════════════ -->
+<div id="hero-scroll-zone">
 <section class="hero" id="home">
   <div class="parallax-bg" id="parallaxBg"></div>
   <div class="particles" id="particles"></div>
-  <div class="hero-label" data-aos="fade-right" data-aos-delay="200">Physics × Data × AI Systems</div>
-  <h1>
-    <span class="glitch" data-text="Falgun">Falgun</span>
-    <span class="accent-word">Gadhiya</span>
-  </h1>
-  <p class="hero-sub" data-aos="fade-up" data-aos-delay="400">MS Physics graduate (PSU, GPA 3.57) with research experience in energy storage and ionospheric physics. I find the signal, model the problem, and ship the tool.</p>
-  <div class="hero-cta" data-aos="fade-up" data-aos-delay="600">
-    <a href="#quant" class="btn-primary">Explore Work</a>
-    <a href="#contact" class="btn-ghost">Hire Me</a>
-  </div>
-  <div class="scroll-indicator">
-    <div class="scroll-line"></div>
-    <span class="scroll-text">Scroll</span>
-  </div>
-  <div class="hero-stats" data-aos="fade-left" data-aos-delay="800">
-    <div class="stat-item"><div class="stat-number">5</div><div class="stat-label">Focus Areas</div></div>
-    <div class="stat-item"><div class="stat-number">3.57</div><div class="stat-label">GPA — MS Physics</div></div>
-    <div class="stat-item"><div class="stat-number">∞</div><div class="stat-label">Problems to Solve</div></div>
+  <div class="hero-zoom-inner">
+    <div class="hero-label" data-aos="fade-right" data-aos-delay="200">Physics × Data × AI Systems</div>
+    <h1>
+      <span class="glitch" data-text="Falgun">Falgun</span>
+      <span class="accent-word">Gadhiya</span>
+    </h1>
+    <p class="hero-sub" data-aos="fade-up" data-aos-delay="400">MS Physics graduate (PSU, GPA 3.57) with research experience in energy storage and ionospheric physics. I find the signal, model the problem, and ship the tool.</p>
+    <div class="hero-cta" data-aos="fade-up" data-aos-delay="600">
+      <a href="#quant" class="btn-primary">Explore Work</a>
+      <a href="#contact" class="btn-ghost">Hire Me</a>
+    </div>
+    <div class="scroll-indicator">
+      <div class="scroll-line"></div>
+      <span class="scroll-text">Scroll</span>
+    </div>
+    <div class="hero-stats" data-aos="fade-left" data-aos-delay="800">
+      <div class="stat-item"><div class="stat-number">5</div><div class="stat-label">Focus Areas</div></div>
+      <div class="stat-item"><div class="stat-number">3.57</div><div class="stat-label">GPA — MS Physics</div></div>
+      <div class="stat-item"><div class="stat-number">∞</div><div class="stat-label">Problems to Solve</div></div>
+    </div>
   </div>
 </section>
+</div>
 
 <!-- ══════════════════ CAT 1 — QUANTITATIVE RESEARCH ══════════════════ -->
 <div class="cat-section cat-quant" id="quant">
@@ -682,19 +688,7 @@ function animateCursor() {
 }
 animateCursor();
 
-// ── Hero parallax
-const heroEl = document.querySelector('.hero');
-window.addEventListener('scroll', () => {
-  const y = window.scrollY;
-  if (heroEl && y < window.innerHeight) {
-    const label = heroEl.querySelector('.hero-label');
-    const h1 = heroEl.querySelector('h1');
-    const sub = heroEl.querySelector('.hero-sub');
-    if (label) label.style.transform = `translateY(${y*.15}px)`;
-    if (h1) h1.style.transform = `translateY(${y*.2}px)`;
-    if (sub) sub.style.transform = `translateY(${y*.1}px)`;
-  }
-}, {passive:true});
+// ── Hero zoom handled by scroll-warp.js setupHeroZoom()
 
 // ── Hero particles — INSTANT, more dots, varied delays include 0
 const pc = document.getElementById('particles');
