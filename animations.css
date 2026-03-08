@@ -1,0 +1,73 @@
+/* ═══════════════════════════════════════════════════════
+   animations.css  —  All @keyframes + CSS-only animations
+   Falgun Gadhiya Portfolio
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Hero particles (float up from bottom) ── */
+.h-particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: floatUp linear infinite;
+}
+@keyframes floatUp {
+  0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+  5%   { opacity: .7; }
+  90%  { opacity: .5; }
+  100% { transform: translateY(-80px) scale(1); opacity: 0; }
+}
+
+/* ── Hero expanding circles ── */
+.h-circle {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(0,255,224,0.06);
+  animation: expandCircle linear infinite;
+}
+@keyframes expandCircle {
+  0%   { transform: translate(-50%,-50%) scale(0); opacity: .6; }
+  100% { transform: translate(-50%,-50%) scale(1); opacity: 0; }
+}
+
+/* ── Glitch text effect ── */
+.glitch::before {
+  animation: glitch1 4s infinite 2s;
+}
+.glitch::after {
+  animation: glitch2 4s infinite 2s;
+}
+@keyframes glitch1 {
+  0%,90%,100% { transform: none; opacity: 0; }
+  91% { transform: translateX(-3px); opacity: .8; }
+  93% { transform: translateX( 3px); opacity: .8; }
+  95% { transform: translateX(-2px); opacity: .8; }
+  97% { transform: none; opacity: 0; }
+}
+@keyframes glitch2 {
+  0%,90%,100% { transform: none; opacity: 0; }
+  92% { transform: translateX( 3px); opacity: .8; }
+  94% { transform: translateX(-3px); opacity: .8; }
+  96% { transform: translateX( 2px); opacity: .8; }
+  98% { transform: none; opacity: 0; }
+}
+
+/* ── Scroll indicator scan line ── */
+.scroll-line::after {
+  content: '';
+  position: absolute; top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: var(--accent);
+  animation: scanLine 2s ease infinite;
+}
+@keyframes scanLine {
+  0%       { left: -100%; }
+  50%,100% { left:  100%; }
+}
+
+/* ── Skills marquee ── */
+.marquee-track {
+  animation: marquee 22s linear infinite;
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
