@@ -473,35 +473,6 @@
   };
 
   /* ─────────────────────────────
-     14. CURSOR TRAIL PARTICLES
-     Tiny dots follow cursor with slight delay
-  ───────────────────────────── */
-  const initCursorTrail = () => {
-    if (window.innerWidth < 768) return;  // skip on mobile
-
-    const TRAIL_COUNT = 8;
-    const trails = [];
-    for (let i = 0; i < TRAIL_COUNT; i++) {
-      const dot = document.createElement('div');
-      Object.assign(dot.style, {
-        position: 'fixed', width: '3px', height: '3px', borderRadius: '50%',
-        background: 'var(--accent)', pointerEvents: 'none', zIndex: '9999',
-        opacity: String(0.4 - i * 0.04), transform: 'translate(-50%,-50%)',
-        transition: `left ${0.08 + i * 0.04}s ease, top ${0.08 + i * 0.04}s ease`,
-      });
-      document.body.appendChild(dot);
-      trails.push(dot);
-    }
-
-    document.addEventListener('mousemove', e => {
-      trails.forEach(dot => {
-        dot.style.left = e.clientX + 'px';
-        dot.style.top  = e.clientY + 'px';
-      });
-    }, { passive: true });
-  };
-
-  /* ─────────────────────────────
      INIT ALL
   ───────────────────────────── */
   const init = () => {
@@ -518,7 +489,6 @@
     initGlitchHover();
     initHeroParallax();
     initCharReveal();
-    initCursorTrail();
   };
 
   if (document.readyState === 'loading') {
