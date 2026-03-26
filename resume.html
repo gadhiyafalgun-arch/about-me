@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Falgun Gadhiya — Resume</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #0d0d0d;
+      color: #e0e0e0;
+      padding: 2rem 1rem;
+    }
+
+    .page {
+      max-width: 860px;
+      margin: 0 auto;
+      background: #111;
+      border: 1px solid #222;
+      padding: 3rem 3.5rem;
+    }
+
+    /* Print button */
+    .print-btn {
+      display: block;
+      margin: 0 auto 2rem auto;
+      padding: .65rem 2rem;
+      background: #00e5c8;
+      color: #000;
+      border: none;
+      font-size: .9rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+    .print-btn:hover { background: #00bfa8; }
+
+    /* Header */
+    .resume-name {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      color: #fff;
+      text-transform: uppercase;
+    }
+    .resume-contact {
+      margin-top: .4rem;
+      font-size: .82rem;
+      color: #9ca3af;
+      line-height: 1.6;
+    }
+    .resume-contact a { color: #00e5c8; text-decoration: none; }
+
+    /* Divider */
+    hr { border: none; border-top: 1px solid #2a2a2a; margin: 1.4rem 0; }
+
+    /* Section */
+    .section-title {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .18em;
+      color: #00e5c8;
+      text-transform: uppercase;
+      margin-bottom: .9rem;
+    }
+
+    p { line-height: 1.65; font-size: .88rem; color: #c9c9c9; }
+
+    /* Education / Experience entries */
+    .entry { margin-bottom: 1.4rem; }
+    .entry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: .3rem;
+    }
+    .entry-org { font-weight: 700; color: #fff; font-size: .9rem; }
+    .entry-role { color: #00e5c8; font-size: .85rem; }
+    .entry-date { font-size: .78rem; color: #6b7280; white-space: nowrap; }
+    .entry-loc { font-size: .78rem; color: #6b7280; }
+    ul {
+      margin-top: .5rem;
+      padding-left: 1.3rem;
+      display: flex;
+      flex-direction: column;
+      gap: .35rem;
+    }
+    li { font-size: .85rem; color: #c9c9c9; line-height: 1.6; }
+
+    /* Skills */
+    .skill-row { margin-bottom: .55rem; font-size: .85rem; line-height: 1.6; color: #c9c9c9; }
+    .skill-label { color: #fff; font-weight: 600; }
+
+    /* Print styles */
+    @media print {
+      body { background: #fff; color: #000; padding: 0; }
+      .page { background: #fff; border: none; padding: 2cm 2cm; max-width: 100%; }
+      .print-btn { display: none; }
+      .resume-name { color: #000; }
+      .resume-contact { color: #333; }
+      .resume-contact a { color: #0050a0; }
+      hr { border-top: 1px solid #ccc; }
+      .section-title { color: #0050a0; }
+      p, li, .skill-row { color: #111; }
+      .entry-org { color: #000; }
+      .entry-role { color: #0050a0; }
+      .entry-date, .entry-loc { color: #555; }
+      .skill-label { color: #000; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+
+    <!-- Header -->
+    <div class="resume-name">Falgun Gadhiya</div>
+    <div class="resume-contact">
+      Pittsburg, KS (66762) &nbsp;|&nbsp; +1 (620) 506-7882 &nbsp;|&nbsp;
+      <a href="mailto:Gadhiyafalgun.02@gmail.com">Gadhiyafalgun.02@gmail.com</a> &nbsp;|&nbsp;
+      <a href="https://www.linkedin.com/in/falgun-gadhiya-47a563346" target="_blank">LinkedIn</a> &nbsp;|&nbsp;
+      <a href="https://github.com/gadhiyafalgun-arch" target="_blank">GitHub</a> (developing)
+    </div>
+
+    <hr />
+
+    <!-- Professional Summary -->
+    <div class="section-title">Professional Summary</div>
+    <p>
+      M.S. Physics graduate with a track record of building systems that work. Comfortable with complex problems—quantum simulations,
+      materials characterization, large-scale data analysis. I write Python code to solve real bottlenecks: turned a week-long manual
+      calculation into a 30-minute automated process. Strong foundation in experimental design, statistical analysis, and translating
+      research questions into working code. Looking for roles where analytical thinking and technical depth can move the needle.
+    </p>
+
+    <hr />
+
+    <!-- Education -->
+    <div class="section-title">Education</div>
+
+    <div class="entry">
+      <div class="entry-header">
+        <div>
+          <div class="entry-org">Pittsburg State University</div>
+          <div class="entry-role">Master of Science, Physics &nbsp;(GPA: 3.57)</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="entry-date">Jan 2024 – Dec 2025</div>
+          <div class="entry-loc">Pittsburg, Kansas</div>
+        </div>
+      </div>
+      <ul>
+        <li>Independently designed and built quantum matrix automation tool from scratch</li>
+      </ul>
+    </div>
+
+    <div class="entry">
+      <div class="entry-header">
+        <div>
+          <div class="entry-org">Sir P. T. Sarvajanik College of Science</div>
+          <div class="entry-role">Bachelor of Science, Physics</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="entry-date">Jul 2021 – Jun 2023</div>
+          <div class="entry-loc">Gujarat, India</div>
+        </div>
+      </div>
+    </div>
+
+    <hr />
+
+    <!-- Professional Experience -->
+    <div class="section-title">Professional Experience</div>
+
+    <div class="entry">
+      <div class="entry-header">
+        <div>
+          <div class="entry-org">Pittsburg State University</div>
+          <div class="entry-role">Scalable Quantum Matrix Automation Tool</div>
+        </div>
+        <div class="entry-date">2025 – Nov 2025</div>
+      </div>
+      <ul>
+        <li>Designed, implemented, debugged, and deployed a Python-based quantum matrix calculation automation system using NumPy and SciPy, enabling researchers to run large-scale simulations without manual intervention</li>
+        <li>Architected a modular Python framework with NumPy/SciPy that supports large-scale quantum mechanical computations, improving code reuse and simplifying experiment setup</li>
+        <li>Implemented vectorized operations and algorithmic refinements in the framework, which cut computation time substantially and accelerated simulation cycles</li>
+        <li>Managed high-dimensional datasets using NumPy, ensuring numerical accuracy and data integrity, which allowed reliable downstream analysis and metric development</li>
+        <li>Led the full lifecycle from research design to production-ready code and comprehensive documentation, delivering a maintainable tool that supports ongoing experimental framework development</li>
+        <li>Developed a scalable quantum matrix automation tool enabling quantum simulations at scale that were previously infeasible with manual calculations, providing a foundation for future quantum research applications</li>
+      </ul>
+    </div>
+
+    <div class="entry">
+      <div class="entry-header">
+        <div>
+          <div class="entry-org">NIMA Research Facility</div>
+          <div class="entry-role">Research Intern — Energy Storage Materials</div>
+        </div>
+        <div class="entry-date">Jun 2023 – Aug 2025</div>
+      </div>
+      <ul>
+        <li>Designed and executed systematic experiments using Design of Experiments (DOE) methodology, which optimized material performance</li>
+        <li>Analyzed approximately 10,000 data points from material characterization experiments with Python (Pandas, SciPy), uncovering trends that guided formulation adjustments</li>
+        <li>Applied regression analysis, hypothesis testing, and anomaly detection to identify material performance patterns, informing selection of high-performing candidates</li>
+        <li>Developed success metrics for evaluating conductivity, energy density, and stability, establishing a consistent framework for material assessment</li>
+        <li>Used quantitative methods to investigate root causes of material degradation and performance variability, pinpointing key factors addressed in subsequent experiments</li>
+        <li>Analyzed material degradation data with regression and causal-inference techniques in Python; assessed confounding variables and performed quality-assurance checks, revealing unexpected degradation patterns and leading to process improvements</li>
+      </ul>
+    </div>
+
+    <div class="entry">
+      <div class="entry-header">
+        <div>
+          <div class="entry-org">Ganpat University</div>
+          <div class="entry-role">Research Intern — Ionospheric Physics</div>
+        </div>
+        <div class="entry-date">Jun 2023 – Aug 2023</div>
+      </div>
+      <ul>
+        <li>Extracted and analyzed over 30,000 atmospheric and ionospheric records using SQL queries and Python (Pandas, SciPy), enabling reliable data sets for subsequent research</li>
+        <li>Applied time-series methods and statistical analysis in Python (SciPy, Pandas) to detect ionospheric disturbances, improving identification of atmospheric dynamics for the study</li>
+        <li>Implemented data-validation protocols with automated Python scripts, increasing measurement reliability and ensuring scientific integrity across the dataset</li>
+        <li>Designed and documented a structured data-collection framework following best scientific practices, streamlining the experimental workflow and reducing setup time</li>
+        <li>Created comprehensive, reproducible documentation of data workflows and analysis procedures, supporting quality assurance and enabling other researchers to replicate the study</li>
+      </ul>
+    </div>
+
+    <hr />
+
+    <!-- Technical Skills -->
+    <div class="section-title">Technical Skills</div>
+
+    <div class="skill-row">
+      <span class="skill-label">Programming &amp; Data Tools:</span>
+      Python, NumPy, Pandas, SciPy, Scikit-learn, SQL, Snowflake, Tableau, Jupyter Notebooks
+    </div>
+    <div class="skill-row">
+      <span class="skill-label">Data Science &amp; Analytics:</span>
+      Regression, hypothesis testing, A/B testing, Design of Experiments, experimental framework development,
+      causal inference, observational data analysis, confounding variable assessment, metrics development,
+      data validation, quality assurance, anomaly detection, root cause analysis
+    </div>
+    <div class="skill-row">
+      <span class="skill-label">Research &amp; Problem-Solving:</span>
+      Quantum systems analysis, data exploration, pattern recognition, trend analysis,
+      performance assessment, rapid learning, independent problem-solving, debugging
+    </div>
+  </div>
+</body>
+</html>
