@@ -218,6 +218,7 @@ nav {
 .project-slot {
   padding: 1.2rem 1.5rem; border: 1px solid var(--border);
   background: rgba(255,255,255,.022); position: relative; overflow: hidden; transition: background .2s;
+  text-decoration: none; display: block;
 }
 .project-slot::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--sa); }
 .project-slot:hover   { background: rgba(255,255,255,.04); }
