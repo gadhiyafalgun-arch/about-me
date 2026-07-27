@@ -1,32 +1,10 @@
 /* ═══════════════════════════════════════════════════════
    animations.css  —  All @keyframes + CSS-only animations
    Falgun Gadhiya Portfolio
+
+   The hero particle and orbit-ring keyframes that used to live here were removed along with the
+   DOM elements they drove — the WebGL point field replaces both, on the GPU.
    ═══════════════════════════════════════════════════════ */
-
-/* ── Hero particles (float up from bottom) ── */
-.h-particle {
-  position: absolute;
-  border-radius: 50%;
-  animation: floatUp linear infinite;
-}
-@keyframes floatUp {
-  0%   { transform: translateY(100vh) scale(0); opacity: 0; }
-  5%   { opacity: .7; }
-  90%  { opacity: .5; }
-  100% { transform: translateY(-80px) scale(1); opacity: 0; }
-}
-
-/* ── Hero expanding circles ── */
-.h-circle {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(0,255,224,0.06);
-  animation: expandCircle linear infinite;
-}
-@keyframes expandCircle {
-  0%   { transform: translate(-50%,-50%) scale(0); opacity: .6; }
-  100% { transform: translate(-50%,-50%) scale(1); opacity: 0; }
-}
 
 /* ── Glitch text effect ── */
 .glitch::before {

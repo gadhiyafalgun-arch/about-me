@@ -308,9 +308,10 @@ void main(){vec4 fc;mainImage(fc,gl_FragCoord.xy);gl_FragColor=fc;}
   }, { passive: true });
   sticky.addEventListener('mouseleave', () => { lmx = 0; lmy = 0; }, { passive: true });
 
-  /* ── Render loop ── */
-  (function loop(ts) {
-    requestAnimationFrame(loop);
+  /* ── Render loop ──
+     Driven from the shared GSAP ticker so the page keeps a single rAF loop. Still gated on
+     inView, so this WebGL context does no work outside the Skills scene. */
+  function loop(ts) {
     if (document.hidden || !inView) return;  // skip when invisible
 
     const t  = ts * 0.001;
@@ -334,5 +335,12 @@ void main(){vec4 fc;mainImage(fc,gl_FragCoord.xy);gl_FragColor=fc;}
     gl.uniform1f(U.uFade,       fade);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-  })(0);
+  }
+
+  if (typeof gsap !== 'undefined') {
+    // gsap.ticker passes elapsed seconds; loop() expects milliseconds.
+    gsap.ticker.add(time => loop(time * 1000));
+  } else {
+    (function raf(ts) { requestAnimationFrame(raf); loop(ts); })(0);
+  }
 })();

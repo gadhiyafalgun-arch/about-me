@@ -7,17 +7,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="animations.css">
-  <link rel="stylesheet" href="target-cursor.css">
+  <link rel="stylesheet" href="cursor.css">
 </head>
 <body>
 
   <div id="scroll-progress"></div>
   <div class="cursor-glow" id="cursorGlow"></div>
-  <canvas id="antigravity"></canvas>
-  <canvas id="bgCanvas"></canvas>
-  <canvas id="warpCanvas" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9;pointer-events:none;opacity:0;transition:opacity .3s ease"></canvas>
+  <canvas id="glCanvas"></canvas>
 
-  <nav id="nav" style="opacity:0;">
+  <nav id="nav">
     <a href="#s0" class="nav-logo cursor-target">FG_</a>
     <ul class="nav-links">
       <li><a href="#s2" class="cursor-target">Quant</a></li>
@@ -33,8 +31,6 @@
   <!-- S0 — HERO -->
   <div class="scene" id="s0">
     <div class="scene-sticky">
-      <div class="hero-particles" id="heroParticles"></div>
-      <div class="hero-circles-wrap" id="heroCircles"></div>
       <div class="scene-content" id="c0" style="align-items:center;justify-content:flex-start;padding:0 4rem;">
         <div class="content-inner" style="max-width:100%;">
           <div class="hero-layout">
@@ -289,23 +285,30 @@
   </footer>
 
   <!-- JS Load Order:
-       1. Three.js (for antigravity)
-       2. GSAP + ScrollTrigger (for scene engine)
-       3. background-animation.js (antigravity + hero particles + category canvas)
-       4. cursor-animation.js (cursor glow)
-       5. scroll-animation.js (GSAP scene engine)
-       6. laser.js (LaserFlow WebGL — Skills scene only)
-       7. mini-fx.js (all micro-interactions)
-       8. target-cursor.js (spinning corner bracket cursor)
+       Libraries are vendored in /vendor rather than loaded from a CDN — see vendor/README.md.
+       GSAP, ScrollTrigger and Lenis are classic scripts (globals); Three.js is ESM-only since r161
+       and is resolved through the import map below.
+
+       1. GSAP + ScrollTrigger + Lenis  (globals, must run before the classic scripts that use them)
+       2. reveal.js                     (line-mask + stagger reveal vocabulary)
+       3. scroll-animation.js           (scene engine, Lenis, progress bar)
+       4. laser.js                      (LaserFlow WebGL — Skills scene only)
+       5. mini-fx.js                    (all micro-interactions)
+       6. js/cursor.js                  (custom cursor + ambient glow)
+       7. js/gl/boot.js                 (ES module — WebGL point field)
   -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-  <script src="background-animation.js"></script>
-  <script src="cursor-animation.js"></script>
+  <script src="vendor/gsap.min.js"></script>
+  <script src="vendor/ScrollTrigger.min.js"></script>
+  <script src="vendor/lenis.min.js"></script>
+  <script src="reveal.js"></script>
   <script src="scroll-animation.js"></script>
   <script src="laser.js"></script>
   <script src="mini-fx.js"></script>
-  <script src="target-cursor.js"></script>
+  <script src="js/cursor.js"></script>
+
+  <script type="importmap">
+  { "imports": { "three": "./vendor/three.module.min.js" } }
+  </script>
+  <script type="module" src="js/gl/boot.js"></script>
 </body>
 </html>

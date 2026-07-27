@@ -33,7 +33,6 @@ body {
   background: var(--bg);
   color: var(--text);
   overflow-x: hidden;
-  cursor: none;
   line-height: 1.6;
 }
 
@@ -55,10 +54,20 @@ body::after {
   background: radial-gradient(circle, rgba(0,255,224,.05) 0%, transparent 70%);
   pointer-events: none; z-index: 1; top: 0; left: 0; will-change: transform;
 }
-#antigravity { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-#bgCanvas {
-  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-  z-index: 1; pointer-events: none; opacity: 0; transition: opacity .8s ease;
+/* WebGL point field — sits behind every section and persists across the whole scroll. */
+#glCanvas {
+  position: fixed; inset: 0; width: 100vw; height: 100vh;
+  z-index: 0; pointer-events: none;
+}
+
+/* Static stand-in when WebGL is unavailable, refused (reduced motion) or has been stepped down
+   by the frame-budget watchdog. Keeps the page from looking empty without costing a frame. */
+html.gl-off #glCanvas { display: none; }
+html.gl-off body::before {
+  content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(58% 44% at 22% 32%, rgba(0,255,224,0.075), transparent 70%),
+    radial-gradient(48% 40% at 78% 68%, rgba(0,119,255,0.065), transparent 70%);
 }
 #scroll-progress {
   position: fixed; top: 0; left: 0; height: 2px; width: 0%;
@@ -78,6 +87,8 @@ nav {
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
 }
+/* Same fallback rule as .scene-content — only fade the nav in if the engine is actually running. */
+html.scene-engine nav { opacity: 0; }
 .nav-logo {
   font-family: 'Space Mono', monospace; font-size: .9rem;
   color: var(--accent); text-decoration: none; letter-spacing: .1em;
@@ -107,22 +118,38 @@ nav {
   position: sticky; top: 0; height: 100vh; width: 100%;
   overflow: hidden; display: flex; align-items: center; justify-content: center;
 }
+/* Visible by default. The scene engine only takes over once it has confirmed GSAP is present
+   (html.scene-engine, set in scroll-animation.js) — so if the scripts fail to load or are blocked,
+   every section stays readable instead of the page going blank. */
 .scene-content {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
   padding: 80px 4rem 40px;
-  opacity: 0; transform: scale(0.03); filter: blur(18px);
-  will-change: transform, opacity, filter;
+  opacity: 1;
   transform-origin: center center; overflow: hidden;
 }
+html.scene-engine .scene-content {
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* ── Line-mask reveal ──
+   Each visual line of a heading sits in an overflow-hidden box so it can slide up from beneath
+   its own baseline. The horizontal padding gives the .glitch pseudo-elements (which offset a few
+   px sideways) room to move without being clipped; the bottom padding does the same for
+   descenders. Both are cancelled by matching negative margins so layout is unchanged. */
+.line-mask {
+  display: block;
+  overflow: hidden;
+  padding: 0 0.14em 0.18em;
+  margin:  0 -0.14em -0.18em;
+}
+.line-inner { display: block; will-change: transform; }
 .content-inner { width: 100%; max-width: 1200px; }
 
 /* ══════════════════════════════════════════
    HERO
 ══════════════════════════════════════════ */
-.hero-particles    { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
-.hero-circles-wrap { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-
 .hero-layout {
   display: grid; grid-template-columns: 1fr 200px;
   gap: 40px; align-items: center; min-height: 100vh;
@@ -196,6 +223,7 @@ nav {
 .cat-scene-content                { align-items: center; justify-content: flex-start; padding: 5rem 4rem; }
 .cat-scene-content .content-inner { max-width: 100%; }
 .cat-layout  { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
+.cat-layout > * { min-width: 0; }
 .cat-left    { display: flex; flex-direction: column; }
 .cat-right   { display: flex; flex-direction: column; gap: .8rem; }
 
@@ -242,6 +270,10 @@ nav {
 .section-line      { flex: 1; height: 1px; background: var(--border); margin-left: 1rem; }
 
 .skills-layout     { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; position: relative; z-index: 2; }
+/* Grid items default to min-width:auto, so a child with width:max-content (.marquee-track, which
+   is ~2800px wide once populated) forces its column that wide and collapses the other one.
+   min-width:0 lets the 1fr 1fr split actually hold and leaves .marquee-wrap to do the clipping. */
+.skills-layout > *  { min-width: 0; }
 .skill-group-title { font-family: 'Space Mono', monospace; font-size: .7rem; color: var(--accent); letter-spacing: .15em; text-transform: uppercase; margin-bottom: 1.5rem; }
 .skill-bar-item    { margin-bottom: 1.3rem; }
 .skill-bar-label-row { display: flex; justify-content: space-between; margin-bottom: .5rem; font-size: .85rem; color: var(--text); }
@@ -273,6 +305,7 @@ nav {
    ABOUT
 ══════════════════════════════════════════ */
 .about-layout      { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; margin-top: 2rem; }
+.about-layout > *   { min-width: 0; }
 .about-text p      { color: var(--muted); line-height: 1.9; margin-bottom: 1.2rem; font-size: .95rem; }
 .about-text p span { color: var(--text); }
 .about-highlight   { border-left: 2px solid var(--accent); padding-left: 1.2rem; margin: 1.8rem 0; font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 600; color: var(--text); line-height: 1.5; }
@@ -286,6 +319,7 @@ nav {
    CONTACT
 ══════════════════════════════════════════ */
 .contact-layout   { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: start; margin-top: 2rem; }
+.contact-layout > * { min-width: 0; }
 .contact-headline { font-family: 'Syne', sans-serif; font-size: clamp(2.2rem,4.5vw,4rem); font-weight: 800; line-height: 1.0; margin-bottom: 1rem; color: var(--text); }
 .contact-headline .outline { color: transparent; -webkit-text-stroke: 1px var(--accent); }
 .contact-sub  { color: var(--muted); font-size: .9rem; line-height: 1.7; margin-bottom: 2rem; }
@@ -309,10 +343,21 @@ footer p { font-family: 'Space Mono', monospace; font-size: .63rem; color: var(-
    RESPONSIVE
 ══════════════════════════════════════════ */
 @media (max-width: 768px) {
-  body { cursor: auto; }
   .cursor-glow { display: none; }
-  nav { padding: 1rem 1.5rem; }
-  .nav-links { gap: 1rem; }
+  nav { padding: 1rem 1.5rem; gap: 1rem; }
+  /* Seven links will not fit on a phone. Left to wrap they stack into three rows and collide
+     with the logo, so they stay on one line and scroll instead — every link is still reachable. */
+  .nav-links {
+    gap: 1.1rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    mask-image: linear-gradient(90deg, black 88%, transparent);
+  }
+  .nav-links::-webkit-scrollbar { display: none; }
+  .nav-links a { white-space: nowrap; font-size: .62rem; }
+  .nav-logo { flex-shrink: 0; }
   .scene-content { padding: 5rem 1.5rem 3rem !important; }
   .hero-layout { grid-template-columns: 1fr; gap: 2rem; }
   .hero-right { flex-direction: row; text-align: left; }

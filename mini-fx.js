@@ -9,12 +9,9 @@
  *  6. Skill tag magnetic grid
  *  7. Skill bar spark
  *  8. Timeline dot pulse rings + laser line
- *  9. Warp stars & asteroids (fast-scroll streaks)
- * 10. Tile hover 3D reflection + shimmer
- * 11. Glitch intensifier (hero name hover)
- * 12. Mouse parallax on hero elements
- * 13. Section title character reveal
- * 14. Cursor trail particles
+ *  9. Tile hover 3D reflection + shimmer
+ * 10. Glitch intensifier (hero name hover)
+ * 11. Mouse parallax on hero elements
  */
 'use strict';
 (() => {
@@ -36,7 +33,12 @@
     requestAnimationFrame(() => requestAnimationFrame(() => {
       overlay.style.clipPath = 'inset(0 0 100% 0)';
     }));
-    setTimeout(() => overlay.remove(), 750);
+    setTimeout(() => {
+      overlay.remove();
+      // The hero reveal waits on this — without it the entrance plays out behind the overlay
+      // and the user never sees it.
+      document.dispatchEvent(new Event('boot:done'));
+    }, 750);
   };
 
   /* ─────────────────────────────
@@ -145,14 +147,15 @@
       const el = document.getElementById(id);
       if (el) io.observe(el);
     });
-    const loop = () => {
+    // Runs on the shared GSAP ticker rather than opening another rAF loop of its own.
+    const step = () => {
       if (cur !== tgt) {
         cur = lerp(cur, tgt, 0.04);
         document.documentElement.style.setProperty('--accent', cur);
       }
-      requestAnimationFrame(loop);
     };
-    requestAnimationFrame(loop);
+    if (typeof gsap !== 'undefined') gsap.ticker.add(step);
+    else (function raf(){ step(); requestAnimationFrame(raf); })();
   };
 
   /* ─────────────────────────────
@@ -282,63 +285,7 @@
   };
 
   /* ─────────────────────────────
-     9. WARP STARS
-  ───────────────────────────── */
-  const initWarpStars = () => {
-    const wc = document.getElementById('warpCanvas');
-    if (!wc) return;
-    const ctx = wc.getContext('2d');
-    let W, H, stars = [], warpSpeed = 0;
-    let lastSY = window.scrollY, lastST = performance.now();
-
-    function resize() { W = wc.width = window.innerWidth; H = wc.height = window.innerHeight; buildStars(); }
-    function newStar(b) {
-      const a = Math.random() * Math.PI * 2, d = 10 + Math.random() * 60;
-      return { x: W/2 + Math.cos(a)*d, y: H/2 + Math.sin(a)*d, speed: 0.4 + Math.random()*1.5, alpha: b?0:Math.random(), len: 0 };
-    }
-    function buildStars() { stars = []; for (let i = 0; i < 160; i++) stars.push(newStar(false)); }
-    resize();
-    window.addEventListener('resize', resize, { passive: true });
-
-    window.addEventListener('scroll', () => {
-      const now = performance.now();
-      const dy = window.scrollY - lastSY, dt = Math.max(now - lastST, 1);
-      warpSpeed = Math.min(Math.abs(dy / dt) * 100, 75);
-      lastSY = window.scrollY; lastST = now;
-    }, { passive: true });
-
-    let lastT = performance.now();
-    function loop(now) {
-      const dt = now - lastT; lastT = now;
-      ctx.clearRect(0, 0, W, H);
-      if (warpSpeed > 0.5) {
-        stars.forEach(s => {
-          const vx = s.x - W/2, vy = s.y - H/2;
-          const mag = Math.sqrt(vx*vx+vy*vy)||1;
-          s.x += (vx/mag)*s.speed*warpSpeed*dt*0.06;
-          s.y += (vy/mag)*s.speed*warpSpeed*dt*0.06;
-          s.len = Math.min(warpSpeed*0.5, 60);
-          s.alpha = Math.min(s.alpha+0.02, warpSpeed/60);
-          if (s.x<0||s.x>W||s.y<0||s.y>H) Object.assign(s, newStar(true));
-          if (s.alpha<=0.01) return;
-          const nx = vx/mag, ny = vy/mag;
-          const grad = ctx.createLinearGradient(s.x-nx*s.len*0.4,s.y-ny*s.len*0.4,s.x,s.y);
-          grad.addColorStop(0,'rgba(0,255,224,0)');
-          grad.addColorStop(1,`rgba(0,255,224,${(s.alpha*0.8).toFixed(3)})`);
-          ctx.beginPath();
-          ctx.moveTo(s.x-nx*s.len*0.4,s.y-ny*s.len*0.4);
-          ctx.lineTo(s.x,s.y);
-          ctx.strokeStyle=grad; ctx.lineWidth=0.8+warpSpeed/80; ctx.stroke();
-        });
-      }
-      wc.style.opacity = warpSpeed > 5 ? String(Math.min(warpSpeed/75*0.8, 0.8)) : '0';
-      requestAnimationFrame(loop);
-    }
-    loop(performance.now());
-  };
-
-  /* ─────────────────────────────
-     10. TILE 3D REFLECTION
+     9. TILE 3D REFLECTION
   ───────────────────────────── */
   const initTileReflection = () => {
     document.querySelectorAll('.project-slot, .physics-card, .contact-row').forEach(tile => {
@@ -370,7 +317,7 @@
   };
 
   /* ─────────────────────────────
-     11. GLITCH INTENSIFIER
+     10. GLITCH INTENSIFIER
      Hovering the hero name amplifies the glitch
   ───────────────────────────── */
   const initGlitchHover = () => {
@@ -393,12 +340,20 @@
   };
 
   /* ─────────────────────────────
-     12. MOUSE PARALLAX (hero elements)
-     Subtle shift based on cursor position
+     11. MOUSE PARALLAX (hero elements)
+     Subtle shift based on cursor position.
+
+     Writes the independent `translate` property rather than `transform`. These same elements are
+     reveal targets, and GSAP animates their `transform` — sharing one property would mean whichever
+     wrote last won, and the parallax writes on every mousemove. Using separate properties lets the
+     reveal and the parallax compose instead of fight.
   ───────────────────────────── */
   const initHeroParallax = () => {
     const hero = document.getElementById('c0');
     if (!hero) return;
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
     const layers = [
       { sel: '.hero-label',  depth: 0.02 },
       { sel: '.hero-h1',     depth: 0.015 },
@@ -406,70 +361,15 @@
       { sel: '.hero-right',  depth: -0.025 },
     ];
     const elems = layers.map(l => ({ el: hero.querySelector(l.sel), d: l.depth })).filter(l => l.el);
+    elems.forEach(({ el }) => { el.style.transition = 'translate 0.35s ease-out'; });
 
     document.addEventListener('mousemove', e => {
       const cx = (e.clientX / window.innerWidth  - 0.5) * 2;
       const cy = (e.clientY / window.innerHeight - 0.5) * 2;
       elems.forEach(({ el, d }) => {
-        el.style.transition = 'transform 0.3s ease-out';
-        el.style.transform = `translate(${cx * d * 100}px, ${cy * d * 100}px)`;
+        el.style.translate = `${(cx * d * 100).toFixed(2)}px ${(cy * d * 100).toFixed(2)}px`;
       });
     }, { passive: true });
-  };
-
-  /* ─────────────────────────────
-     13. SECTION TITLE CHARACTER REVEAL
-     Characters fade in one by one when section enters view
-  ───────────────────────────── */
-  const initCharReveal = () => {
-    document.querySelectorAll('.cat-title').forEach(title => {
-      // Skip if already processed
-      if (title.dataset.revealed) return;
-      title.dataset.revealed = 'pending';
-
-      const io = new IntersectionObserver(entries => {
-        if (!entries[0].isIntersecting || title.dataset.revealed === 'done') return;
-        title.dataset.revealed = 'done';
-        io.disconnect();
-
-        // Split text into spans per character (preserve HTML like <br> and <span>)
-        const children = Array.from(title.childNodes);
-        title.innerHTML = '';
-        let charIndex = 0;
-
-        children.forEach(node => {
-          if (node.nodeType === Node.TEXT_NODE) {
-            // Split text characters
-            const chars = node.textContent.split('');
-            chars.forEach(ch => {
-              const span = document.createElement('span');
-              span.textContent = ch;
-              span.style.cssText = `display:inline-block;opacity:0;transform:translateY(20px);transition:opacity 0.4s ease, transform 0.4s ease;transition-delay:${charIndex * 25}ms`;
-              title.appendChild(span);
-              charIndex++;
-              requestAnimationFrame(() => requestAnimationFrame(() => {
-                span.style.opacity = '1';
-                span.style.transform = 'translateY(0)';
-              }));
-            });
-          } else {
-            // Preserve element nodes (like <br>, <span>)
-            const clone = node.cloneNode(true);
-            if (clone.nodeType === Node.ELEMENT_NODE && clone.textContent) {
-              clone.style.cssText = `display:inline-block;opacity:0;transform:translateY(20px);transition:opacity 0.5s ease, transform 0.5s ease;transition-delay:${charIndex * 25}ms`;
-              charIndex += clone.textContent.length;
-              requestAnimationFrame(() => requestAnimationFrame(() => {
-                clone.style.opacity = '1';
-                clone.style.transform = 'translateY(0)';
-              }));
-            }
-            title.appendChild(clone);
-          }
-        });
-      }, { threshold: 0.3 });
-
-      io.observe(title);
-    });
   };
 
   /* ─────────────────────────────
@@ -484,11 +384,9 @@
     initSkillTagMagnet();
     initSkillBarSpark();
     initTimelineEffects();
-    initWarpStars();
     initTileReflection();
     initGlitchHover();
     initHeroParallax();
-    initCharReveal();
   };
 
   if (document.readyState === 'loading') {
