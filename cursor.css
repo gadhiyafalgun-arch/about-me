@@ -1,0 +1,52 @@
+/* ═══════════════════════════════════════════════════════
+   cursor.css — custom cursor (see js/cursor.js)
+   ═══════════════════════════════════════════════════════ */
+
+/* Only hide the native cursor once js/cursor.js has confirmed it can actually draw one.
+   Hiding it unconditionally means a script failure, a touch device or reduced-motion leaves the
+   visitor with no pointer at all. */
+html.custom-cursor,
+html.custom-cursor body { cursor: none; }
+html.custom-cursor a,
+html.custom-cursor button,
+html.custom-cursor .cursor-target { cursor: none; }
+
+.fg-cursor-ring,
+.fg-cursor-dot {
+  position: fixed; top: 0; left: 0;
+  pointer-events: none;
+  z-index: 99999;
+  opacity: 1;
+  transition: opacity .25s ease;
+  will-change: transform;
+}
+
+.fg-cursor-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+
+.fg-cursor-ring {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  /* Only the border colour transitions — the transform is driven per-frame from the ticker and
+     must not have a CSS transition fighting it. */
+  transition: border-color .25s ease, background-color .25s ease, opacity .25s ease;
+}
+.fg-cursor-ring.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+/* Older engines without color-mix() still get a visible ring. */
+@supports not (color: color-mix(in srgb, red 50%, transparent)) {
+  .fg-cursor-ring { border-color: rgba(0, 255, 224, 0.55); }
+  .fg-cursor-ring.is-active { border-color: rgba(0, 255, 224, 1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fg-cursor-ring { transition: none; }
+}
