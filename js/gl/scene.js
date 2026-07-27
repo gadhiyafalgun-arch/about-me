@@ -132,9 +132,14 @@ export function initScene() {
   /* ── Render loop, on the shared GSAP ticker ── */
   const clock = new THREE.Clock();
   let frameTimes = [], watchdogDone = false, watchdogStart = performance.now();
+  /* Set once the field has been torn down (watchdog step-down to 'off', or context loss). Every
+     surviving listener checks it — a disposed renderer must not be resized or drawn to.
+     Declared up here because teardown() clears the resize timer. */
+  let disposed = false;
+  let rzTimer;
 
   function render() {
-    if (document.hidden) return;
+    if (disposed || document.hidden) return;
 
     const dt = Math.min(clock.getDelta(), 0.05);
     uniforms.uTime.value += dt;
@@ -188,7 +193,10 @@ export function initScene() {
   }
 
   function teardown() {
+    if (disposed) return;
+    disposed = true;
     gsap.ticker.remove(render);
+    clearTimeout(rzTimer);
     geom.dispose(); material.dispose(); renderer.dispose();
     canvas.style.display = 'none';
     document.documentElement.classList.add('gl-off');
@@ -199,16 +207,23 @@ export function initScene() {
   canvas.addEventListener('webglcontextlost', e => {
     e.preventDefault();
     console.warn('[gl] context lost — falling back to static background');
+    disposed = true;
     gsap.ticker.remove(render);
+    clearTimeout(rzTimer);
+    canvas.style.display = 'none';
     document.documentElement.classList.add('gl-off');
     window.__gl.tier = 'off';
+    window.__gl.points = 0;
   });
 
-  /* ── Resize ── */
-  let rzTimer;
+  /* ── Resize ──
+     Guarded on `disposed`: the listener outlives teardown, and resizing a disposed renderer is
+     at best wasted work and at worst touches a released context. */
   window.addEventListener('resize', () => {
+    if (disposed) return;
     clearTimeout(rzTimer);
     rzTimer = setTimeout(() => {
+      if (disposed) return;
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
@@ -224,7 +239,7 @@ export function initScene() {
   console.info(`[gl] tier=${tierName} points=${count} dpr=${renderer.getPixelRatio()}`);
 
   return { renderer, scene, camera, group, geom, uniforms, material, get count() { return count; },
-           get tier() { return tierName; } };
+           get tier() { return tierName; }, get disposed() { return disposed; } };
 }
 
 export { SCENE_FORMATION, getFormation };

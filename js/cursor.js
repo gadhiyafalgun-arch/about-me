@@ -59,13 +59,30 @@
   document.addEventListener('mouseleave', () => { ring.style.opacity = '0'; dot.style.opacity = '0'; });
   document.addEventListener('mouseenter', () => { ring.style.opacity = '1'; dot.style.opacity = '1'; });
 
-  /* Interactive targets swell the ring. Delegated so elements added later still work. */
+  /* Interactive targets swell the ring. Delegated so elements added later still work.
+
+     mouseover/mouseout bubble, so moving between two children of the same target (a
+     .project-slot holds a tag, a title, a stack line and mini-fx's shimmer div) would otherwise
+     fire mouseout and immediately mouseover again — the ring would pulse and the border-colour
+     transition would restart every time the pointer crossed an internal boundary. Comparing
+     against relatedTarget ignores moves that never actually leave the element. */
   let hovering = false;
+  const INTERACTIVE = '.cursor-target, a, button';
+
   document.addEventListener('mouseover', e => {
-    if (e.target.closest('.cursor-target, a, button')) { hovering = true; ringScaleTarget = 1.9; ring.classList.add('is-active'); }
+    const el = e.target.closest(INTERACTIVE);
+    if (!el || hovering) return;
+    hovering = true; ringScaleTarget = 1.9; ring.classList.add('is-active');
   }, { passive: true });
+
   document.addEventListener('mouseout', e => {
-    if (e.target.closest('.cursor-target, a, button')) { hovering = false; ringScaleTarget = 1; ring.classList.remove('is-active'); }
+    const el = e.target.closest(INTERACTIVE);
+    if (!el) return;
+    // Still inside the same interactive element (or a nested one) — not a real exit.
+    if (e.relatedTarget && el.contains(e.relatedTarget)) return;
+    // Moved straight from one interactive element into another — stay swollen.
+    if (e.relatedTarget && e.relatedTarget.closest?.(INTERACTIVE)) return;
+    hovering = false; ringScaleTarget = 1; ring.classList.remove('is-active');
   }, { passive: true });
 
   /* ── One update, on the shared ticker ──
@@ -75,6 +92,8 @@
 
   gsap.ticker.add((time, deltaMs) => {
     if (document.hidden) return;
+    // gsap.ticker's 2nd argument is the frame delta in *milliseconds* (its 1st is elapsed
+    // seconds). Verified against wall-clock on 3.12.5: summed deltas track performance.now() 1:1.
     const dt = Math.min(deltaMs / 1000, 0.05);
 
     // The dot tracks almost exactly; the ring trails it. That gap is the whole effect.

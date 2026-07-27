@@ -126,7 +126,11 @@ export function linkScroll(field) {
   const damp = (rate, dt) => 1 - Math.exp(-rate * dt);
 
   gsap.ticker.add((time, deltaMs) => {
-    if (document.hidden) return;
+    // field.disposed goes true if the watchdog steps down to 'off' or the context is lost;
+    // there is nothing left to ease toward once that happens.
+    if (document.hidden || field.disposed) return;
+    // gsap.ticker's 2nd argument is the frame delta in *milliseconds* (its 1st is elapsed
+    // seconds). Verified against wall-clock on 3.12.5: summed deltas track performance.now() 1:1.
     const dt = Math.min(deltaMs / 1000, 0.05);          // clamp so a stalled tab can't jump
 
     dispRaw *= Math.exp(-9 * dt);
