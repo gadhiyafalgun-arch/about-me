@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 from .types import BrainContext, BrainReply, Message, Tool, ToolCallRecord
 
-DEFAULT_MODEL = "claude-opus-5"
+DEFAULT_MODEL = "claude-sonnet-5"
 DEFAULT_MAX_TOKENS = 2048
 DEFAULT_EFFORT = "medium"
 MAX_TOOL_ITERATIONS = 8
@@ -39,7 +39,16 @@ class ClaudeBrain:
         self.max_tokens = max_tokens
         self.effort = effort
 
-    def ask(self, user_message: str, available_tools: list[Tool], context: BrainContext) -> BrainReply:
+    def ask(
+        self,
+        user_message: str,
+        available_tools: list[Tool],
+        context: BrainContext,
+        model: Optional[str] = None,
+    ) -> BrainReply:
+        """`model` overrides the instance default for this call only -- e.g. pass
+        "claude-opus-5" to escalate a single hard-reasoning request without creating
+        a separate ClaudeBrain."""
         tools_by_name = {t.name: t for t in available_tools}
         tool_schemas = [_tool_schema(t) for t in available_tools]
 
@@ -51,7 +60,7 @@ class ClaudeBrain:
 
         for _ in range(MAX_TOOL_ITERATIONS):
             response = self.client.messages.create(
-                model=self.model,
+                model=model or self.model,
                 max_tokens=self.max_tokens,
                 system=context.system_prompt,
                 tools=tool_schemas,

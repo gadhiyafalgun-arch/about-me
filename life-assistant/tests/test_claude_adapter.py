@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from brain.claude_adapter import MAX_TOOL_ITERATIONS, ClaudeBrain
+from brain.claude_adapter import DEFAULT_MODEL, MAX_TOOL_ITERATIONS, ClaudeBrain
 from brain.types import BrainContext, Tool
 
 
@@ -181,6 +181,42 @@ def test_refusal_stop_reason_handled_gracefully():
 
     assert reply.response_text == "I can't help with that request."
     assert reply.tool_calls == []
+
+
+def test_default_model_is_sonnet():
+    assert DEFAULT_MODEL == "claude-sonnet-5"
+
+    client = FakeClient([FakeResponse(content=[FakeTextBlock("hi")], stop_reason="end_turn")])
+    brain = ClaudeBrain(client=client)
+    brain.ask("hello", [make_tool()], BrainContext(system_prompt="sys"))
+
+    assert client.messages.calls[0]["model"] == "claude-sonnet-5"
+
+
+def test_instance_level_model_override():
+    client = FakeClient([FakeResponse(content=[FakeTextBlock("hi")], stop_reason="end_turn")])
+    brain = ClaudeBrain(client=client, model="claude-opus-5")
+    brain.ask("hello", [make_tool()], BrainContext(system_prompt="sys"))
+
+    assert client.messages.calls[0]["model"] == "claude-opus-5"
+
+
+def test_per_call_model_override_escalates_without_changing_instance_default():
+    client = FakeClient(
+        [
+            FakeResponse(content=[FakeTextBlock("easy answer")], stop_reason="end_turn"),
+            FakeResponse(content=[FakeTextBlock("hard answer")], stop_reason="end_turn"),
+        ]
+    )
+    brain = ClaudeBrain(client=client)
+    context = BrainContext(system_prompt="sys")
+
+    brain.ask("a routine question", [make_tool()], context)
+    brain.ask("a hard reasoning task", [make_tool()], context, model="claude-opus-5")
+
+    assert client.messages.calls[0]["model"] == "claude-sonnet-5"
+    assert client.messages.calls[1]["model"] == "claude-opus-5"
+    assert brain.model == "claude-sonnet-5"  # the instance default is untouched
 
 
 def test_context_history_persists_across_turns():

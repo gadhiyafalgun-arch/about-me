@@ -3,6 +3,9 @@
 
 Usage:
     ANTHROPIC_API_KEY=... python chat.py [--db canvas.db] [--model claude-opus-5]
+
+Defaults to claude-sonnet-5; pass --model claude-opus-5 to escalate for a hard
+reasoning task.
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ from scheduler import Canvas, SchedulingEngine
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", default="canvas.db", help="Path to the canvas SQLite database.")
-    parser.add_argument("--model", default=None, help="Override the Claude model (default: claude-opus-5).")
+    parser.add_argument("--model", default=None, help="Override the Claude model (default: claude-sonnet-5).")
     args = parser.parse_args()
 
     scheduling_engine = SchedulingEngine(Canvas(args.db))
