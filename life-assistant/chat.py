@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import argparse
 
-from brain import SYSTEM_PROMPT, BrainContext, ClaudeBrain, build_scheduler_tools
+from brain import SYSTEM_PROMPT, BrainContext, ClaudeBrain, build_nutrition_tools, build_scheduler_tools
+from nutrition import NutritionEngine, NutritionStore
 from scheduler import Canvas, SchedulingEngine
 
 
@@ -19,8 +20,9 @@ def main() -> None:
     parser.add_argument("--model", default=None, help="Override the Claude model (default: claude-opus-5).")
     args = parser.parse_args()
 
-    engine = SchedulingEngine(Canvas(args.db))
-    tools = build_scheduler_tools(engine)
+    scheduling_engine = SchedulingEngine(Canvas(args.db))
+    nutrition_engine = NutritionEngine(NutritionStore(args.db), scheduling_engine)
+    tools = build_scheduler_tools(scheduling_engine) + build_nutrition_tools(nutrition_engine)
     brain = ClaudeBrain(model=args.model) if args.model else ClaudeBrain()
     context = BrainContext(system_prompt=SYSTEM_PROMPT)
 
