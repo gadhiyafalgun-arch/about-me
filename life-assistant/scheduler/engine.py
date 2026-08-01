@@ -33,6 +33,15 @@ def _overlaps(a_start: datetime, a_end: datetime, b_start: datetime, b_end: date
     return a_start < b_end and b_start < a_end
 
 
+def _horizon_end(reference: datetime, horizon_days: int, day_end: time) -> datetime:
+    """Upper bound for a busy-items query that must fully cover everything
+    `_find_free_slot` could scan when called with `earliest=reference` and the same
+    `horizon_days`. Aligning to day_end of the *date* `horizon_days` out -- rather
+    than adding a raw timedelta to `reference` -- guarantees the query window is
+    never narrower than the scan window, regardless of `reference`'s time of day."""
+    return datetime.combine(reference.date() + timedelta(days=horizon_days), day_end)
+
+
 def _find_free_slot(
     busy: list[tuple[datetime, datetime]],
     duration: timedelta,
@@ -104,7 +113,7 @@ class SchedulingEngine:
         free-slot search."""
         validate_score("urgency", urgency)
         earliest = earliest or datetime.now()
-        horizon_end = earliest + timedelta(days=self.search_horizon_days)
+        horizon_end = _horizon_end(earliest, self.search_horizon_days, self.day_end)
         busy_items = self.canvas.list_between(earliest, horizon_end, exclude_id=exclude_id)
         busy = [(i.start, i.end) for i in busy_items]
         return _find_free_slot(busy, duration, earliest, self.day_start, self.day_end, self.search_horizon_days)
@@ -162,7 +171,11 @@ class SchedulingEngine:
     ) -> list[DisplacementPlan]:
         """Find each displaced item a fresh, fully-free slot after the new item,
         accounting for the other displacements already planned in this same batch."""
-        horizon_end = new_start + timedelta(days=self.search_horizon_days)
+        # The search below scans starting at new_end (not new_start), so the query
+        # horizon must be anchored to new_end too -- otherwise, whenever the new item
+        # spans midnight, the query can end a full day earlier than the last day the
+        # scan actually covers, silently missing a real conflict near that boundary.
+        horizon_end = _horizon_end(new_end, self.search_horizon_days, self.day_end)
         surrounding = self.canvas.list_between(new_start, horizon_end, exclude_id=exclude_id)
         moving_ids = {c.id for c in conflicts}
         working_busy = [(i.start, i.end) for i in surrounding if i.id not in moving_ids]

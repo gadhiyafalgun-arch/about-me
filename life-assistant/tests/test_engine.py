@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 
 import pytest
 
@@ -242,3 +242,73 @@ def test_out_of_range_scores_are_rejected(engine, urgency, inertia):
 def test_end_before_start_is_rejected(engine):
     with pytest.raises(ValueError):
         engine.propose_task("Backwards", ItemType.TASK, dt(1, 10), dt(1, 9), urgency=3, inertia=3)
+
+
+# ---- search-horizon boundary correctness ----------------------------------------
+
+
+def test_horizon_end_covers_the_full_last_scanned_day():
+    from scheduler.engine import _horizon_end
+
+    # A late clock time on the reference day stresses the boundary: naively adding
+    # `horizon_days` as a raw timedelta (rather than aligning to day_end on the
+    # target date) would land short of the last day _find_free_slot can scan.
+    reference = datetime(2026, 3, 1, 22, 30)
+    horizon_end = _horizon_end(reference, horizon_days=2, day_end=time(23, 0))
+
+    last_scanned_day = reference.date() + timedelta(days=1)  # horizon_days=2 -> offsets 0,1
+    last_scanned_window_end = datetime.combine(last_scanned_day, time(23, 0))
+    assert horizon_end >= last_scanned_window_end
+    assert horizon_end == datetime(2026, 3, 3, 23, 0)
+
+
+def test_displacement_search_does_not_miss_conflicts_near_the_horizon_when_new_item_spans_midnight():
+    """Regression test: _plan_displacements used to compute its busy-items query
+    horizon from the new item's *start*, while the search itself scans starting at
+    the new item's *end*. Those only ever diverge when the new item spans midnight
+    (e.g. negotiating around a sleep block, or an overnight task) -- in which case
+    the query could end a full day earlier than the last day actually scanned,
+    hiding a real conflict near that boundary and letting the engine propose a
+    displacement slot that collided with it."""
+    canvas = Canvas(":memory:")
+    engine = SchedulingEngine(canvas, day_start=time(0, 0), day_end=time(23, 59), search_horizon_days=3)
+
+    day0 = datetime(2026, 3, 1)
+    day1 = datetime(2026, 3, 2)
+    day3 = datetime(2026, 3, 4)
+
+    low = engine.add_task(
+        "Low priority chore", ItemType.TASK, day0 + timedelta(hours=12), day0 + timedelta(hours=13),
+        urgency=1, inertia=1,
+    )
+    # Occupies nearly the whole search window, forcing the displacement search all
+    # the way out to the last day _find_free_slot scans.
+    engine.add_task(
+        "Big blocker", ItemType.TASK, day1 + timedelta(minutes=30), day3 + timedelta(hours=22),
+        urgency=1, inertia=1,
+    )
+    # Sits exactly in the gap the old (buggy) horizon would have missed: past
+    # `new_start + search_horizon_days`, but still within the last day the scan
+    # actually covers once anchored to `new_end`.
+    engine.add_task(
+        "Hidden conflict", ItemType.TASK, day3 + timedelta(hours=22), day3 + timedelta(hours=22, minutes=30),
+        urgency=1, inertia=1,
+    )
+
+    # Spans midnight -- this is what makes _plan_displacements search from a
+    # different reference point (new_end) than the old horizon calculation used
+    # (new_start).
+    proposal = engine.add_task(
+        "Urgent overnight task", ItemType.TASK, day0 + timedelta(hours=12), day1 + timedelta(minutes=30),
+        urgency=5, inertia=4,
+    )
+
+    assert proposal.decision == "displace"
+    assert len(proposal.displacements) == 1
+    plan = proposal.displacements[0]
+    assert plan.item.id == low.requested["id"]
+
+    conflicts_at_new_slot = engine.check_conflict(plan.new_slot.start, plan.new_slot.end, exclude_id=plan.item.id)
+    assert conflicts_at_new_slot == []
+
+    canvas.close()
