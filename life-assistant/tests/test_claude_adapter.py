@@ -10,8 +10,10 @@ from typing import Any
 import pytest
 
 from brain.claude_adapter import DEFAULT_MODEL, MAX_TOOL_ITERATIONS, ClaudeBrain, _format_date_grounding
+from brain.nutrition_tools import build_nutrition_tools
 from brain.scheduler_tools import build_scheduler_tools
 from brain.types import BrainContext, Tool
+from nutrition import NutritionEngine, NutritionStore
 from scheduler import Canvas, SchedulingEngine
 
 
@@ -297,6 +299,92 @@ def test_relative_date_tool_call_resolves_against_the_injected_current_date():
     assert len(scheduled) == 1
     assert scheduled[0].title == "Deep work"
 
+    canvas.close()
+
+
+# ---- duplicate log_meal across unrelated turns ----------------------------------
+
+
+def test_log_meal_is_not_repeated_on_later_unrelated_turns(tmp_path):
+    """Regression for a real bug: log_meal fired again on later, unrelated turns
+    ("find time tomorrow", "am I on track today?") because context.history only
+    ever kept the final narrative reply, never a record of which tool calls had
+    actually succeeded. The original "I ate a chicken salad" message legitimately
+    stays in history forever (that's normal conversational continuity) -- but
+    without a clear "already logged" record alongside it, a model re-reading that
+    stale mention on a later turn can decide to log it again "just in case".
+
+    This scripts a minimal fake client that reproduces exactly that failure mode:
+    it re-calls log_meal on any turn where the meal is mentioned anywhere in
+    history *unless* it also finds a record that log_meal already completed for
+    it. Asserts log_meal fires exactly once across three turns, and that the real
+    NutritionEngine ends up with exactly one meal logged, not three."""
+    db_path = str(tmp_path / "canvas.db")
+    canvas = Canvas(db_path)
+    scheduling_engine = SchedulingEngine(canvas)
+    store = NutritionStore(db_path)
+    nutrition_engine = NutritionEngine(store, scheduling_engine)
+    tools = build_nutrition_tools(nutrition_engine)
+
+    meal_time = datetime(2026, 8, 1, 12, 30)
+
+    class ScriptedNutritionClient:
+        """Stand-in for a model that would re-log a meal any time it's still
+        mentioned in history, unless that history also clearly shows it was
+        already logged successfully."""
+
+        def __init__(self):
+            self.messages = self
+            self.calls: list[dict[str, Any]] = []
+
+        def create(self, **kwargs):
+            self.calls.append({**kwargs, "messages": list(kwargs.get("messages", []))})
+            messages = kwargs["messages"]
+            last = messages[-1]
+
+            if isinstance(last["content"], list):
+                # A tool_result reply within the same turn -- just wrap up with text.
+                return FakeResponse(content=[FakeTextBlock("Okay.")], stop_reason="end_turn")
+
+            user_text = last["content"]
+            history_text = "\n".join(m["content"] for m in messages[:-1] if isinstance(m["content"], str))
+            meal_confirmed_done = "log_meal already completed successfully" in history_text
+            meal_mentioned = "chicken salad" in user_text.lower() or "chicken salad" in history_text.lower()
+
+            if meal_mentioned and not meal_confirmed_done:
+                return FakeResponse(
+                    content=[
+                        FakeToolUseBlock(
+                            id=f"toolu_{len(self.calls)}",
+                            name="log_meal",
+                            input={
+                                "foods": [
+                                    {"name": "chicken salad", "calories": 450, "protein_g": 35, "carbs_g": 20, "fat_g": 22}
+                                ],
+                                "eaten_at": meal_time.isoformat(),
+                            },
+                        )
+                    ],
+                    stop_reason="tool_use",
+                )
+            return FakeResponse(content=[FakeTextBlock("Here you go.")], stop_reason="end_turn")
+
+    client = ScriptedNutritionClient()
+    brain = ClaudeBrain(client=client, clock=lambda: meal_time)
+    context = BrainContext(system_prompt="sys")
+
+    reply1 = brain.ask("I ate a chicken salad for lunch", tools, context)
+    reply2 = brain.ask("find time tomorrow for a workout", tools, context)
+    reply3 = brain.ask("am I on track today?", tools, context)
+
+    all_tool_calls = reply1.tool_calls + reply2.tool_calls + reply3.tool_calls
+    log_meal_calls = [c for c in all_tool_calls if c.name == "log_meal"]
+    assert len(log_meal_calls) == 1
+
+    status = nutrition_engine.get_nutrition_status(meal_time.date())
+    assert status["meals_logged"] == 1
+
+    store.close()
     canvas.close()
 
 

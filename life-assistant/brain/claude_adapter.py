@@ -20,6 +20,21 @@ def _default_clock() -> datetime:
     return datetime.now().astimezone()
 
 
+def _format_completed_tool_calls(tool_calls: list[ToolCallRecord]) -> str:
+    """A durable record of which tool calls actually succeeded this turn, appended
+    to the assistant's *stored history* entry only -- never to the reply shown to
+    the user. `context.history` is replayed as plain text on every future turn (see
+    `ask()` below), so without this the only trace of a completed action like
+    log_meal is whatever prose the model happened to phrase it as; the model can
+    then lose track of what it already did and repeat a real-world side effect
+    (e.g. logging the same meal again on an unrelated later turn)."""
+    completed = [c for c in tool_calls if c.error is None]
+    if not completed:
+        return ""
+    lines = "\n".join(f"- {c.name} already completed successfully; do not call it again for this." for c in completed)
+    return f"\n\n[Internal record -- actions already taken this turn, do not repeat them:\n{lines}]"
+
+
 def _format_date_grounding(current_dt: datetime) -> str:
     """Ground the model in the real current date/time, pulled from the system clock
     at the start of this turn -- never left for the model to infer from its own
@@ -135,6 +150,8 @@ class ClaudeBrain:
             response_text = f"{response_text}\n{note}".strip() if response_text else note
 
         context.history.append(Message(role="user", content=user_message))
-        context.history.append(Message(role="assistant", content=response_text))
+        context.history.append(
+            Message(role="assistant", content=response_text + _format_completed_tool_calls(tool_calls))
+        )
 
         return BrainReply(response_text=response_text, tool_calls=tool_calls)
