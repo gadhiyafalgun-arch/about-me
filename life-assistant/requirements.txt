@@ -1,2 +1,11 @@
 pytest>=8.0
 anthropic>=0.120
+numpy>=1.26
+
+# Needed only to actually run voice_chat.py locally with a real mic/speaker --
+# not required by the test suite. voice/whisper_stt.py and voice/pyttsx3_tts.py
+# lazily import these, only when no fake model/engine is injected, so the tests
+# never need them installed.
+faster-whisper>=1.0
+pyttsx3>=2.90
+sounddevice>=0.4
