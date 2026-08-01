@@ -4,12 +4,15 @@ mechanics* (tool_use -> tool_result round trips, iteration cap, error handling) 
 never actual model behavior, which can't be tested deterministically."""
 
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from typing import Any
 
 import pytest
 
-from brain.claude_adapter import DEFAULT_MODEL, MAX_TOOL_ITERATIONS, ClaudeBrain
+from brain.claude_adapter import DEFAULT_MODEL, MAX_TOOL_ITERATIONS, ClaudeBrain, _format_date_grounding
+from brain.scheduler_tools import build_scheduler_tools
 from brain.types import BrainContext, Tool
+from scheduler import Canvas, SchedulingEngine
 
 
 @dataclass
@@ -68,7 +71,8 @@ def test_direct_text_response_with_no_tool_use():
 
     assert reply.response_text == "Hello there!"
     assert reply.tool_calls == []
-    assert client.messages.calls[0]["system"] == "sys"
+    # The system prompt now carries fresh date grounding ahead of the caller's text.
+    assert client.messages.calls[0]["system"].endswith("sys")
     assert client.messages.calls[0]["messages"][-1] == {"role": "user", "content": "hi"}
 
 
@@ -217,6 +221,83 @@ def test_per_call_model_override_escalates_without_changing_instance_default():
     assert client.messages.calls[0]["model"] == "claude-sonnet-5"
     assert client.messages.calls[1]["model"] == "claude-opus-5"
     assert brain.model == "claude-sonnet-5"  # the instance default is untouched
+
+
+# ---- current-date grounding -----------------------------------------------------
+
+
+def test_format_date_grounding_reports_the_given_date_verbatim():
+    fixed = datetime(2026, 8, 2, 14, 30)  # a Sunday
+
+    grounding = _format_date_grounding(fixed)
+
+    assert "2026-08-02" in grounding
+    assert "Sunday" in grounding
+    assert "14:30" in grounding
+
+
+def test_ask_grounds_the_system_prompt_in_the_injected_clock_each_turn():
+    """The system prompt sent to the model must reflect the clock passed to
+    ClaudeBrain, not real wall-clock time -- this is what makes date resolution
+    deterministic and testable instead of depending on the model's own
+    (unreliable) sense of "now"."""
+    fixed_now = datetime(2026, 8, 2, 9, 0)
+    client = FakeClient([FakeResponse(content=[FakeTextBlock("ok")], stop_reason="end_turn")])
+    brain = ClaudeBrain(client=client, clock=lambda: fixed_now)
+    context = BrainContext(system_prompt="sys")
+
+    brain.ask("what's on my plate today?", [make_tool()], context)
+
+    system_sent = client.messages.calls[0]["system"]
+    assert "2026-08-02" in system_sent
+    assert system_sent.endswith("sys")  # caller's own instructions still follow the grounding
+
+
+def test_relative_date_tool_call_resolves_against_the_injected_current_date():
+    """End-to-end regression for the "tomorrow" bug: with "today" fixed via a
+    mocked clock, a tool call resolving "tomorrow" (as a correctly-grounded
+    model would produce) must land the item on the real next calendar date on
+    the actual scheduling engine -- not some other, ungrounded guess."""
+    fixed_today = datetime(2026, 8, 1, 9, 0)  # a Saturday
+    tomorrow = fixed_today.date() + timedelta(days=1)
+
+    canvas = Canvas(":memory:")
+    engine = SchedulingEngine(canvas)
+    tools = build_scheduler_tools(engine)
+
+    tool_call_args = {
+        "title": "Deep work",
+        "type": "task",
+        "start": f"{tomorrow.isoformat()}T14:00:00",
+        "end": f"{tomorrow.isoformat()}T16:00:00",
+        "urgency": 3,
+        "inertia": 2,
+    }
+    client = FakeClient(
+        [
+            FakeResponse(
+                content=[FakeToolUseBlock(id="toolu_1", name="add_task", input=tool_call_args)],
+                stop_reason="tool_use",
+            ),
+            FakeResponse(content=[FakeTextBlock("Booked 2 hours tomorrow afternoon.")], stop_reason="end_turn"),
+        ]
+    )
+    brain = ClaudeBrain(client=client, clock=lambda: fixed_today)
+    context = BrainContext(system_prompt="sys")
+
+    reply = brain.ask("I need 2 hours tomorrow afternoon", tools, context)
+
+    # The model was grounded in the fixed "today" for this turn...
+    assert fixed_today.strftime("%Y-%m-%d") in client.messages.calls[0]["system"]
+
+    # ...and the tool call that resolved "tomorrow" against it actually booked
+    # the item on the real engine, on the real next calendar date.
+    assert reply.tool_calls[0].result["decision"] == "direct"
+    scheduled = engine.get_schedule(tomorrow)
+    assert len(scheduled) == 1
+    assert scheduled[0].title == "Deep work"
+
+    canvas.close()
 
 
 def test_context_history_persists_across_turns():

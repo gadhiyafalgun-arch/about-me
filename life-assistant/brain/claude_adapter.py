@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Optional
+from datetime import datetime
+from typing import Any, Callable, Optional
 
 from .types import BrainContext, BrainReply, Message, Tool, ToolCallRecord
 
@@ -13,6 +14,24 @@ MAX_TOOL_ITERATIONS = 8
 
 def _tool_schema(tool: Tool) -> dict[str, Any]:
     return {"name": tool.name, "description": tool.description, "input_schema": tool.parameters}
+
+
+def _default_clock() -> datetime:
+    return datetime.now().astimezone()
+
+
+def _format_date_grounding(current_dt: datetime) -> str:
+    """Ground the model in the real current date/time, pulled from the system clock
+    at the start of this turn -- never left for the model to infer from its own
+    (frozen, possibly stale) sense of "now"."""
+    tz_label = current_dt.tzname() or "local time"
+    return (
+        f"Today's date is {current_dt.strftime('%Y-%m-%d')} ({current_dt.strftime('%A')}), and the "
+        f"current time is {current_dt.strftime('%H:%M')} {tz_label}. This is the real current date "
+        "and time, read from the system clock -- not a guess and not your training cutoff. Resolve "
+        "every relative date or time phrase (\"today\", \"tomorrow\", \"this week\", \"next Friday\", "
+        "etc.) against this exact date before calling any tool that takes a date or datetime."
+    )
 
 
 class ClaudeBrain:
@@ -29,6 +48,7 @@ class ClaudeBrain:
         model: str = DEFAULT_MODEL,
         max_tokens: int = DEFAULT_MAX_TOKENS,
         effort: str = DEFAULT_EFFORT,
+        clock: Callable[[], datetime] = _default_clock,
     ):
         if client is None:
             import anthropic
@@ -38,6 +58,7 @@ class ClaudeBrain:
         self.model = model
         self.max_tokens = max_tokens
         self.effort = effort
+        self.clock = clock
 
     def ask(
         self,
@@ -52,6 +73,10 @@ class ClaudeBrain:
         tools_by_name = {t.name: t for t in available_tools}
         tool_schemas = [_tool_schema(t) for t in available_tools]
 
+        # Read the clock once, at the start of this turn -- never reused across turns,
+        # so a long-lived chat session can't drift onto a stale "today".
+        system = f"{_format_date_grounding(self.clock())}\n\n{context.system_prompt}"
+
         messages: list[dict[str, Any]] = [{"role": m.role, "content": m.content} for m in context.history]
         messages.append({"role": "user", "content": user_message})
 
@@ -62,7 +87,7 @@ class ClaudeBrain:
             response = self.client.messages.create(
                 model=model or self.model,
                 max_tokens=self.max_tokens,
-                system=context.system_prompt,
+                system=system,
                 tools=tool_schemas,
                 messages=messages,
                 output_config={"effort": self.effort},
