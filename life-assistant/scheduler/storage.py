@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
+from contextlib import contextmanager
 from datetime import datetime
-from typing import Optional
+from typing import Iterator, Optional
 
 from .models import CanvasItem, ItemStatus, ItemType
 
@@ -56,9 +57,32 @@ class Canvas:
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(SCHEMA)
         self._conn.commit()
+        self._in_transaction = False
 
     def close(self) -> None:
         self._conn.close()
+
+    @contextmanager
+    def transaction(self) -> Iterator[None]:
+        """Group multiple insert/update/delete calls into one atomic commit.
+        Callers doing a multi-step operation (e.g. displacing several items
+        before writing the new one) opt in with `with canvas.transaction():`.
+        On any exception, every change made inside the block is rolled back;
+        calls outside a `transaction()` block keep committing immediately, as
+        before."""
+        if self._in_transaction:
+            yield  # already inside an outer transaction -- let it own commit/rollback
+            return
+        self._in_transaction = True
+        try:
+            yield
+        except BaseException:
+            self._conn.rollback()
+            raise
+        else:
+            self._conn.commit()
+        finally:
+            self._in_transaction = False
 
     def insert(self, item: CanvasItem) -> CanvasItem:
         now = datetime.now()
@@ -82,7 +106,8 @@ class Canvas:
                 item.updated_at.isoformat(),
             ),
         )
-        self._conn.commit()
+        if not self._in_transaction:
+            self._conn.commit()
         return item
 
     def get(self, item_id: str) -> Optional[CanvasItem]:
@@ -107,12 +132,14 @@ class Canvas:
                 item.id,
             ),
         )
-        self._conn.commit()
+        if not self._in_transaction:
+            self._conn.commit()
         return item
 
     def delete(self, item_id: str) -> None:
         self._conn.execute("DELETE FROM items WHERE id = ?", (item_id,))
-        self._conn.commit()
+        if not self._in_transaction:
+            self._conn.commit()
 
     def list_between(
         self,

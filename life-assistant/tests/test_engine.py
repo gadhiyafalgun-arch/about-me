@@ -196,6 +196,35 @@ def test_apply_proposal_commits_a_previously_computed_displace_decision(engine):
     assert len(engine.get_schedule(dt(1, 0).date())) == 2
 
 
+def test_apply_proposal_rolls_back_all_writes_if_a_later_step_fails(engine):
+    """A crash partway through applying a displace proposal (after the
+    displacement's update has been issued but before the new item is written)
+    must not leave the canvas half-displaced -- the whole batch should roll
+    back as one unit."""
+    low = engine.add_task("Low priority chore", ItemType.TASK, dt(1, 9), dt(1, 10), urgency=1, inertia=1)
+    low_id = low.requested["id"]
+
+    proposal = engine.add_task("Urgent call", ItemType.TASK, dt(1, 9), dt(1, 10), urgency=5, inertia=2)
+    assert proposal.decision == "displace"
+    assert len(proposal.displacements) == 1
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("simulated crash mid-transaction")
+
+    engine.canvas.insert = boom  # fails after the displacement's update has already run
+
+    with pytest.raises(RuntimeError):
+        engine.apply_proposal(proposal)
+
+    # Rolled back entirely: the low-priority item is still in its original
+    # slot (not moved to its would-be displacement slot), and the urgent item
+    # was never written at all.
+    day = engine.get_schedule(dt(1, 0).date())
+    assert len(day) == 1
+    assert day[0].id == low_id
+    assert (day[0].start, day[0].end) == (dt(1, 9), dt(1, 10))
+
+
 # ---- move_task ------------------------------------------------------------------
 
 

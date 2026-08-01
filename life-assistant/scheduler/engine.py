@@ -199,29 +199,33 @@ class SchedulingEngine:
         if proposal.decision not in ("direct", "displace"):
             raise ValueError(f"cannot apply a '{proposal.decision}' proposal; resolve the conflict first")
 
-        for plan in proposal.displacements:
-            moved = replace(plan.item, start=plan.new_slot.start, end=plan.new_slot.end)
-            self.canvas.update(moved)
+        # Displacing existing items and writing the requested one must land as a
+        # single unit -- a failure partway through (e.g. a crash after the first
+        # displacement is written) must not leave the canvas half-displaced.
+        with self.canvas.transaction():
+            for plan in proposal.displacements:
+                moved = replace(plan.item, start=plan.new_slot.start, end=plan.new_slot.end)
+                self.canvas.update(moved)
 
-        req = proposal.requested
-        if item_id is not None:
-            existing = self.canvas.get(item_id)
-            if existing is None:
-                raise KeyError(f"no item with id {item_id}")
-            updated = replace(existing, start=req["start"], end=req["end"])
-            return self.canvas.update(updated)
+            req = proposal.requested
+            if item_id is not None:
+                existing = self.canvas.get(item_id)
+                if existing is None:
+                    raise KeyError(f"no item with id {item_id}")
+                updated = replace(existing, start=req["start"], end=req["end"])
+                return self.canvas.update(updated)
 
-        item = CanvasItem(
-            id=new_id(),
-            title=req["title"],
-            type=req["type"],
-            start=req["start"],
-            end=req["end"],
-            urgency=req["urgency"],
-            inertia=req["inertia"],
-            type_data=req["type_data"],
-        )
-        return self.canvas.insert(item)
+            item = CanvasItem(
+                id=new_id(),
+                title=req["title"],
+                type=req["type"],
+                start=req["start"],
+                end=req["end"],
+                urgency=req["urgency"],
+                inertia=req["inertia"],
+                type_data=req["type_data"],
+            )
+            return self.canvas.insert(item)
 
     # ---- entry points ------------------------------------------------------
 
